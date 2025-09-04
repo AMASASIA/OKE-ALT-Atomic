@@ -1,0 +1,9 @@
+{
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "name": "OKE ALT DEMO Ver1.1 ",
+  "description": "ALT Ver1.1 | Cross Ver 2.8 - Email-first flow with multi-format minting.",
+  "prompt": ""
+}

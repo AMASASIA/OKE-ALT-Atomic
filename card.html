@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OKE-ALT Gemini Integration</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { color: #1877f2; }
+        .feature-section { border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px; }
+        input, textarea, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background-color: #1877f2; color: white; font-weight: bold; border: none; cursor: pointer; }
+        button:hover { background-color: #166fe5; }
+        button:disabled { background-color: #a0bdf5; cursor: not-allowed; }
+        .result, #chat-window { margin-top: 15px; padding: 15px; background-color: #f7f7f7; border: 1px solid #eee; border-radius: 6px; white-space: pre-wrap; }
+        #oke-card-display { text-align: center; }
+        #image { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
+        .message { padding: 8px; margin-bottom: 8px; border-radius: 12px; }
+        .user-message { background-color: #e7f3ff; text-align: right; }
+        .ai-message { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>OKE-ALT dApp & Gemini AI</h1>
+
+    <!-- Feature 1: Generate Image for OKE-CARD -->
+    <div class="feature-section">
+        <h2>1. Generate AI Image for OKE-CARD</h2>
+        <p>Enter a concept to generate an image for your NFT card.</p>
+        <input type="text" id="image-prompt" placeholder="e.g., A futuristic green crystal">
+        <button id="generate-image-btn">Generate Image</button>
+        <div id="oke-card-display">
+            <img id="image" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" alt="Generated OKE-CARD Image"/>
+        </div>
+    </div>
+
+    <!-- Feature 2: Generate Description for OkeSBT -->
+    <div class="feature-section">
+        <h2>2. Generate Unique Description for OkeSBT</h2>
+        <p>Provide keywords for your Soul-Bound Token to generate a unique description.</p>
+        <textarea id="desc-prompt" rows="3" placeholder="e.g., A token representing community leadership, earned through active participation and mentorship."></textarea>
+        <button id="generate-desc-btn">Generate Description</button>
+        <div id="desc-result" class="result">AI-generated description will appear here...</div>
+    </div>
+
+    <!-- Feature 3: AI Chatbot Assistant -->
+    <div class="feature-section">
+        <h2>3. AI Chatbot Assistant</h2>
+        <div id="chat-window" style="height: 200px; overflow-y: auto;"></div>
+        <input type="text" id="chat-input" placeholder="Ask the assistant anything...">
+        <button id="chat-send-btn">Send</button>
+    </div>
+
+    <!-- Feature 4: Voice-to-Image Generation -->
+    <div class="feature-section">
+        <h2>4. Interactive Voice-to-Image (Veo-like Concept)</h2>
+        <p>Click the button and speak a prompt to generate an image. (Requires browser permission for microphone)</p>
+        <button id="voice-btn">Start Listening</button>
+        <div id="voice-status">Status: Idle</div>
+    </div>
+
+</div>
+
+<script>
+    // The single endpoint for our Vercel Serverless Function
+    const API_ENDPOINT = '/api/gemini';
+
+    // --- Image Generation Logic ---
+    const imagePrompt = document.getElementById('image-prompt');
+    const generateImageBtn = document.getElementById('generate-image-btn');
+    const imageDisplay = document.getElementById('image');
+
+    generateImageBtn.addEventListener('click', async () => {
+        await generateImage(imagePrompt.value);
+    });
+
+    async function generateImage(prompt) {
+        if (!prompt) { alert('Please enter an image prompt.'); return; }
+        setLoading(generateImageBtn, true, 'Generating...');
+        imageDisplay.src = "data:image/gif;base64,R0lGODlhAQABAIAAAHd3dwAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="; // Loading GIF
+
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'generate-image', prompt: prompt })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            imageDisplay.src = data.imageUrl;
+        } else {
+            alert(`Error: ${data.error}`);
+            imageDisplay.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // Reset to blank
+        }
+        setLoading(generateImageBtn, false, 'Generate Image');
+    }
+
+    // --- Description Generation Logic ---
+    const descPrompt = document.getElementById('desc-prompt');
+    const generateDescBtn = document.getElementById('generate-desc-btn');
+    const descResult = document.getElementById('desc-result');
+
+    generateDescBtn.addEventListener('click', async () => {
+        const prompt = `Generate a unique and compelling description for a Soul-Bound Token based on these characteristics: ${descPrompt.value}`;
+        if (!descPrompt.value) { alert('Please enter a description prompt.'); return; }
+        setLoading(generateDescBtn, true, 'Generating...');
+        descResult.textContent = 'Thinking...';
+
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'generate-description', prompt: prompt })
+        });
+        const data = await response.json();
+        descResult.textContent = response.ok ? data.text : `Error: ${data.error}`;
+        setLoading(generateDescBtn, false, 'Generate Description');
+    });
+
+    // --- Chatbot Logic ---
+    const chatWindow = document.getElementById('chat-window');
+    const chatInput = document.getElementById('chat-input');
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    let chatHistory = [];
+
+    chatSendBtn.addEventListener('click', handleChat);
+    chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleChat());
+
+    async function handleChat() {
+        const userMessage = chatInput.value;
+        if (!userMessage) return;
+        addMessageToChat(userMessage, 'user');
+        chatInput.value = '';
+        setLoading(chatSendBtn, true, '...');
+
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'chat', prompt: userMessage, history: chatHistory })
+        });
+        const data = await response.json();
+        const aiMessage = response.ok ? data.text : `Error: ${data.error}`;
+        addMessageToChat(aiMessage, 'ai');
+        
+        // Update history
+        chatHistory.push({ role: "user", parts: userMessage });
+        chatHistory.push({ role: "model", parts: aiMessage });
+
+        setLoading(chatSendBtn, false, 'Send');
+    }
+
+    function addMessageToChat(text, sender) {
+        const messageElem = document.createElement('div');
+        messageElem.className = `message ${sender === 'user' ? 'user-message' : 'ai-message'}`;
+        messageElem.textContent = text;
+        chatWindow.appendChild(messageElem);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    // --- Voice-to-Image Logic ---
+    const voiceBtn = document.getElementById('voice-btn');
+    const voiceStatus = document.getElementById('voice-status');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.onstart = () => voiceStatus.textContent = 'Listening...';
+        recognition.onend = () => voiceStatus.textContent = 'Status: Idle';
+        recognition.onerror = (e) => voiceStatus.textContent = `Error: ${e.error}`;
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            voiceStatus.textContent = `Recognized: "${transcript}"`;
+            generateImage(transcript); // Reuse the image generation function
+        };
+        voiceBtn.addEventListener('click', () => recognition.start());
+    } else {
+        voiceBtn.disabled = true;
+        voiceStatus.textContent = 'Speech recognition not supported in this browser.';
+    }
+
+    // --- Utility Functions ---
+    function setLoading(button, isLoading, loadingText) {
+        button.disabled = isLoading;
+        button.textContent = isLoading ? loadingText : button.originalText;
+    }
+    // Store original button text
+    document.querySelectorAll('button').forEach(btn => btn.originalText = btn.textContent);
+</script>
+
+</body>
+</html>
